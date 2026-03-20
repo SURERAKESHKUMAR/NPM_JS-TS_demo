@@ -78,7 +78,4 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Skip message
-      - name: Skip publish
-        if: steps.check.outputs.exists == 'true'
-        run: echo "Skipped: version already exists"
+    
