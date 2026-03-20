@@ -1,0 +1,16 @@
+{
+  "name": "planjavascriptapp",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test/test.index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@mahendar8121/ts-njm-utils": "^1.0.0"
+  }
+}
