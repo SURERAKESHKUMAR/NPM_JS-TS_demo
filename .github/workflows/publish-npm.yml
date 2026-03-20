@@ -1,6 +1,84 @@
-- name: Setup Node.js
-  uses: actions/setup-node@v4
-  with:
-    node-version: 20
-    registry-url: https://npm.pkg.github.com
-    scope: '@mahendar8121'
+name: Build & Publish NPM Package
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'NPM_package/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: NPM_package
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://npm.pkg.github.com
+          scope: '@mahendar8121'
+
+      - name: Install dependencies (with auth)
+        run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Optional build (safe)
+      - name: Build (if exists)
+        run: |
+          if npm run | grep -q "build"; then
+            npm run build
+          else
+            echo "No build script, skipping build"
+          fi
+
+      # Get package details
+      - name: Read package info
+        id: pkg
+        run: |
+          echo "name=$(node -p "require('./package.json').name")" >> $GITHUB_OUTPUT
+          echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      # Check version existence
+      - name: Check if version exists
+        id: check
+        run: |
+          NAME=${{ steps.pkg.outputs.name }}
+          VERSION=${{ steps.pkg.outputs.version }}
+
+          echo "Checking $NAME@$VERSION"
+
+          if npm view "$NAME@$VERSION" version > /dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Version exists. Skipping publish."
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Version not found. Will publish."
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Publish only if new version
+      - name: Publish to GitHub Packages
+        if: steps.check.outputs.exists == 'false'
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Skip message
+      - name: Skip publish
+        if: steps.check.outputs.exists == 'true'
+        run: echo "Skipped: version already exists"
